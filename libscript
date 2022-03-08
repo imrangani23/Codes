@@ -1,0 +1,113 @@
+/* USE THESE bits of code in your files:
+
+#include "../../../library/libScript.as"
+//+++++++++++ INITIATE +++++++++++++++++
+
+setOptionBox(labelText:String, boxWidth:Number, clip:MovieClip);
+setInputBox(maxChar:Number, boxWidth:Number, clip:MovieClip);
+setWorkingBox(maxChar:Number, boxWidth:Number, clip:MovieClip);
+
+*/
+//+++++++++++++ FUNCTIONS USED BY THE INTPUT LIBRARY ITEMS +++++++++++++++++++++++++
+// ......set up the glass option buttons....
+function setOptionBox(labelText:String, boxWidth:Number, clip:MovieClip):Void {
+	clip._xscale = 100;
+	clip.label_txt.text = labelText;
+	clip.label_txt._width = boxWidth;
+	
+	clip.boxMid_mc._width = boxWidth - 10;
+	clip.highMid_mc._width = boxWidth - 10;
+	clip.rollMid_mc._width = boxWidth - 10;
+	
+	clip.boxEndR_mc._x = boxWidth - 5;
+	clip.highEndR_mc._x = boxWidth - 5;
+	clip.rollEndR_mc._x = boxWidth - 5;
+	
+	clip.highMid_mc._visible = false;
+	clip.highEndL_mc._visible = false;
+	clip.highEndR_mc._visible = false;
+	
+	clip.rollMid_mc._visible = false;
+	clip.rollEndL_mc._visible = false;
+	clip.rollEndR_mc._visible = false;
+}
+
+// highlightSorter handles the selection and deselection of optionBoxes
+// called directly from the optionbox clip in the libInput
+function highlightSorter(clip:MovieClip):Void {
+	for (i=1; i<=numOptions; i++) {
+		this["optionBox"+i+"_mc"].highMid_mc._visible = false;
+		this["optionBox"+i+"_mc"].highEndL_mc._visible = false;
+		this["optionBox"+i+"_mc"].highEndR_mc._visible = false;
+		this["optionBox"+i+"_mc"].boxMid_mc._visible = true;
+		this["optionBox"+i+"_mc"].boxEndL_mc._visible = true;
+		this["optionBox"+i+"_mc"].boxEndR_mc._visible = true;
+	}
+	this[clip].highMid_mc._visible = true;
+	this[clip].highEndL_mc._visible = true;
+	this[clip].highEndR_mc._visible = true;
+	this[clip].boxMid_mc._visible = false;
+	this[clip].boxEndL_mc._visible = false;
+	this[clip].boxEndR_mc._visible = false;
+}
+// Resets all optionBoxes
+function resetOptions() {
+	for (i=1; i<=numOptions; i++) {
+		this["optionBox"+i+"_mc"].correct = false;
+		this["optionBox"+i+"_mc"].highMid_mc._visible = false;
+		this["optionBox"+i+"_mc"].highEndL_mc._visible = false;
+		this["optionBox"+i+"_mc"].highEndR_mc._visible = false;
+		this["optionBox"+i+"_mc"].boxMid_mc._visible = true;
+		this["optionBox"+i+"_mc"].boxEndL_mc._visible = true;
+		this["optionBox"+i+"_mc"].boxEndR_mc._visible = true;
+	}
+}
+//.................................................................
+//............... set up the input boxes ..........................
+function setInputBox(maxChar:Number, boxWidth:Number, clip:MovieClip):Void {
+	clip._xscale = 100;
+	clip.answerText.restrict = "0-9 . > < + \\- * % / ( ) [ ] £ $ ^";
+	clip.answerText.maxChars = maxChar;
+	
+	if (boxWidth <= 20) {
+		clip.answerText._width = boxWidth -1;
+	}
+	else if ((boxWidth > 20) and (boxWidth <= 40)){
+		clip.answerText._width = boxWidth -2;
+	}
+	else if ((boxWidth > 40) and (boxWidth <= 60)){
+		clip.answerText._width = boxWidth -3;
+	}
+	else {
+		clip.answerText._width = boxWidth -4;
+	}
+	
+	clip.answerText._x = 0;
+	clip.inBaseMid_mc._width = boxWidth - 4; // starts at _x=2
+	clip.inBaseRight_mc._x = boxWidth -2;
+}
+//..................................................................
+//............... set up the workings boxes ........................
+function setWorkingBox(maxChar:Number, boxWidth:Number, clip:MovieClip):Void {
+	clip._xscale = 100;
+	clip.answerText.restrict = "0-9 .";
+	clip.workings_txt.maxChars = maxChar;
+	clip.workings_txt._width = boxWidth - 2;
+	clip.workings_txt._x = 2;
+	clip.workMid_mc._width = boxWidth - 6; // starts at _x=3
+	clip.workEndR_mc._x = boxWidth - 3;
+}
+
+//......................................................................
+
+//.............. STATUS CHANGING FUNCTION FOR MARKS .....................
+function setMark(clip:MovieClip, correct:Boolean):Void {
+	if (correct) {
+		clip.tick_mc._visible = true;
+		clip.cross_mc._visible = false;
+	}
+	else {
+		clip.tick_mc._visible = false;
+		clip.cross_mc._visible = true;
+	}
+}
