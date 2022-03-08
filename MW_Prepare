@@ -1,0 +1,460 @@
+// dont ask about long running scripts
+fl.showIdleMessage(false);
+//clear the trace panel
+fl.outputPanel.clear();
+// get the current script full path
+var scriptURI = fl.scriptURI;
+// and now the folder
+var basedir = scriptURI.substring(0, scriptURI.lastIndexOf('/')) + "/";
+//load the MyLogger class
+fl.runScript( basedir + "clsMwLogger.jsfl");
+var mwl = new MwLogger();
+mwl.Init();
+mwl.Log('Hello');
+
+//load the Lesson Preparer class
+fl.runScript( basedir + "clsMWLessonPreparer.jsfl");
+// test it
+var mwlp = new MwLessonPreparer();
+mwlp.Test();
+
+
+// possible options for mp3-format:
+var mp3_mono_fast=0;
+var mp3_mono_medium=1;
+var mp3_stereo_medium=2;
+var mp3_stereo_best=3;
+
+
+// possible options for mp3 quality;
+var mp3_8kbit=6;
+var mp3_16kbit=7;
+var mp3_20kbit=8;
+var mp3_24kbit=9;
+var mp3_32kbit=10;
+var mp3_48kbit=11;
+var mp3_56kbit=12;
+var mp3_64kbit=13;
+var mp3_80kbit=14;
+var mp3_112kbit=15;
+var mp3_128kbit=16;
+var mp3_160kbit=17;
+
+var streamFormat=mp3_stereo_medium;
+var streamCompress=mp3_160kbit;
+var eventFormat=mp3_stereo_medium;
+var eventCompress=mp3_160kbit;
+
+var relevant_lessons = ['MA_GBR_0725QAx0400','MA_GBR_0575NAx0100','MA_GBR_0550NAx0300','MA_GBR_1025GAx0100','MA_GBR_1225FAx0100']//['MA_GBR_0600AAx0200','MA_GBR_0600AAx0100','MA_GBR_0550AAx0200','MA_GBR_0575AAx0100','MA_GBR_0550AAx0600','MA_GBR_0525AAx0800','MA_GBR_0550AAx0100','MA_GBR_0500AAx0100','MA_GBR_0525AAx0200','MA_GBR_0525AAx0300','MA_GBR_0525AAx0700','MA_GBR_1000AAx0500','MA_GBR_1050AAx0500','MA_GBR_0925AAx0300','MA_GBR_1225AAx0300','MA_GBR_1325FAx0200']
+//['MA_GBR_0900PAx0100','MA_GBR_0900PAx0400','MA_GBR_0900PAx0500','MA_GBR_0925PAx0100','MA_GBR_0925PAx0500','MA_GBR_0925RAx0300','MA_GBR_0925RAx0400','MA_GBR_0750PAx0100','MA_GBR_0775PAx0100','MA_GBR_0775PAx0200','MA_GBR_0775PAx0300','MA_GBR_0800PAx0100','MA_GBR_0800PAx0200','MA_GBR_0800PAx0300','MA_GBR_0850PAx0100','MA_GBR_0850PAx0200']
+
+var lessons_to_skip=[];
+
+var processedLessons = [];
+var folders_to_process = [];
+
+var doMain=false; var doAudio=false; var doPb=true;
+
+var lang = 'th';
+var sublang = 'sw'
+mwl.Log("Abu_color"+relevant_lessons);
+basedir = 'file:///C:/Dev_new/content-source-th' +  '/';
+//var publishPath = 'file:///C:/aws_content_compiled/content-compiled-th-' + lang + '/v2/maths/lessons/';
+var publishPath = 'file:///C:/aws_content_compiled/content-compiled-th-' + lang + '/v2/maths/lessons/';
+
+var mwlp = new MwLessonPreparer();
+
+start();
+
+function start()
+{
+	fl.outputPanel.clear();
+	
+	mwl.Log('Starting...');
+	
+	// first read in the processed lessons
+	
+	mwl.Log('lesson count=' + relevant_lessons.length);
+	
+	GetProcessedLessons();
+	
+	mwl.Log('Processed lesson count=' + processedLessons.length);
+	
+	loadFolders();
+	
+	mwl.Log(folders_to_process.length + ' folders_to_process=' + folders_to_process.toString());
+	
+	doWork();
+	
+	LogNotFoundFolders();
+}
+
+function GetProcessedLessons()
+{
+	processedLessons = [];
+	var fileURI = "file:///c:/temp/processedLessons.txt"; 
+	if(FLfile.exists(fileURI))
+	{
+		var str = FLfile.read( fileURI); 
+		if (str) { 
+			var lines = str.split(String.fromCharCode(13,10));
+		}
+	}
+	for(x in lines)
+	{
+		if(lines[x].length>0)
+		{
+			processedLessons.push(lines[x]);
+		}
+	}
+	
+	//fl.trace(processedLessons);
+}
+
+
+function AddProcessedLesson(strLesson)
+{
+	if(processedLessons.indexOf(strLesson)==-1)
+	{
+		fl.trace('Adding processed lesson:' + strLesson);
+		var fileURI = "file:///c:/temp/processedLessons.txt"; 
+		
+		if(FLfile.exists(fileURI))
+		{
+			fl.trace('File exists.');
+			FLfile.write(fileURI,strLesson,"append");
+		}
+		else
+		{
+			fl.trace('Creating Processed Lessons File..');
+			FLfile.write(fileURI,strLesson);
+		}
+		
+		FLfile.write(fileURI,String.fromCharCode(13,10),"append");
+	}
+}
+
+
+
+function doWork()
+{
+	// single folder used for testing
+	//ProcessFolder(folders_to_process[0]);
+
+	for(var folder in folders_to_process)
+	{
+		mwl.Log('folders_to_process[folder]=' + folders_to_process[folder]);
+		ProcessFolder(folders_to_process[folder]);
+	}
+}
+
+
+function loadFolders()
+{
+	mwl.Log('basedir=' + basedir);
+	
+	// starting at basepath, recurse and get all (relevant) folders
+	var folders = FLfile.listFolder(basedir, "directories");
+	
+	mwl.Log(folders.length);
+	
+	for(i = 0; i<folders.length; i++)
+	{
+		folder = folders[i];
+		
+		if(isEmpty(folder))
+		   continue;
+		   
+		mwl.Log('folder=' + folder);
+		
+/*		if(lessons_to_skip!=null && lessons_to_skip.length>0 && lessons_to_skip.indexOf(folder)>=0)
+		{
+			mwl.Log('Skipping Lesson ' + folder);
+			continue;
+		}
+*/		   
+		// we might be in a Topic Folder or a Lesson folder (or neither which can be ignored)
+		if(folder.toLowerCase().indexOf('topic')>=0)
+		{
+			mwl.Log('Is Topic Folder');
+			
+			var search_uri = basedir + folder + '/MA_GBR_*';
+			mwl.Log('search_uri=' + search_uri);
+			var lesson_folders = FLfile.listFolder(search_uri, "directories");
+			//mwl.Log('lesson_folders=' + lesson_folders.toString());
+			
+			// now lets remove any skipped ones...
+			if(lessons_to_skip!=null && lessons_to_skip.length>0)
+			{
+				for(lts in lessons_to_skip)
+				{
+					if(lesson_folders.indexOf(lessons_to_skip[lts])>=0)
+					{
+						mwl.Log('Skipping Lesson ' + lessons_to_skip[lts]);
+						lesson_folders.splice(lesson_folders.indexOf(lessons_to_skip[lts]), 1 );
+					}
+				}
+			}
+			
+			if(relevant_lessons.length>0)
+			{
+				// get the cross-section of these folders and the relevant ones...
+				var xsection = intersect(lesson_folders,relevant_lessons);
+				mwl.Log('relevant lessons in this folder=' + xsection.toString()); 
+				if(xsection.length>0)
+				{
+					pushfolders(basedir + folder,xsection);
+				}
+			}
+			else
+			{
+				pushfolders(basedir + folder,lesson_folders);
+			}
+		}
+		else if(folder.indexOf('MA_GBR_')>=0)
+		{
+			mwl.Log('Is Lesson Folder: ' + folder);
+
+			//mwl.Log('checking relevant lessons..');
+			//mwl.Log('index=' + relevant_lessons.indexOf(folder));
+			if(relevant_lessons.length==0 || relevant_lessons.indexOf(folder)>=0)
+			{
+				mwl.Log('adding folder to process: ' + basedir + folder);
+				folders_to_process.push(basedir + folder);
+			}
+			else
+			{
+				mwl.Log('Not relevant: ' + folder);
+			}
+		}
+	}
+	
+}
+
+function ProcessFolder(folder)
+{
+		mwl.Log("\nProcessing folder: "+folder);			
+		var curDir = folder.substring(folder.lastIndexOf("/")+1);
+		mwl.Log("\nProcessing Directory: "+curDir);			
+		var files = FLfile.listFolder(folder+ "/MA_GBR_*.fla", "files");
+		mwl.Log('files=' + files.toString());
+		var level=-1;
+		var flaName="";
+		var audioflaName="";
+		for (file in files) {
+			var curFile = files[file];
+			
+			if(curFile.indexOf("(")>0 || curFile.indexOf(")")>0)
+				continue;
+			
+			curFile=curFile.replace(".fla", "").replace(".FLA","");
+			mwl.Log("found a fla "+curFile);	
+			var hasSameName =curFile.toLowerCase().indexOf(curDir.toLowerCase());
+			if(hasSameName==0){
+				// the file-name starts with the dir-name
+				var suffix=curFile.replace(curDir, "");
+				if(suffix==""){
+					if(level==-1){
+						flaName=curFile;		
+						mwl.Log("no suffix "+flaName);								
+					}								
+				}
+				else if(suffix=="specialcase"){
+					level=1000000;
+					flaName=curFile;
+					mwl.Log("special case suffix higher than all others "+flaName);		
+				}
+				else{
+					suffix=suffix.replace(/[^0-9.]/g, "");
+					suffix=suffix.replace(/[^0-9.]/g, "");
+					var newLevel=parseInt(suffix);
+					//mwl.Log("newLevel "+newLevel);	
+					if(newLevel>=level){
+						level=newLevel;
+						flaName=curFile;		
+						mwl.Log("higher suffix "+flaName);		
+					}											
+				}							
+			}
+			else{
+				// the file-name does not start with the dir-name - could still be a sound fla
+				curFile=curFile.replace("As", "Ax");
+				var hasSameName =curFile.indexOf(curDir);
+				if(hasSameName==0){
+					audioflaName=curFile=curFile.replace("Ax", "As");
+				}
+			}
+		}
+		if(doMain){						
+			if(flaName==""){
+				mwl.Log("Could not find a lesson-fla for the directory "+curDir);
+			}
+			else{
+				mwl.Log("processing lesson-fla "+flaName);
+				var filePath = folder+"/"+flaName+".fla";
+				mwl.Log('filePath=' + filePath);
+				
+					var ex_publishPath = publishPath +curDir+"/";	//'file:///C:/Dev/content-compiled-en-us/v2/maths/lessons/ex/';
+				mwl.Log('ex_publishPathabu=' + relevant_lessons);
+				mwlp.processFile(filePath, true,true,true,ex_publishPath);
+				
+				/*var ex_publishPath = publishPath +relevant_lessons[i]+"/";	//'file:///C:/Dev/content-compiled-en-us/v2/maths/lessons/ex/';
+				mwl.Log('ex_publishPath=' + ex_publishPath);
+				mwlp.processFile(filePath, true,true,true,ex_publishPath);
+*/			}
+		}
+		if(doAudio){		
+			if(flaName==""){
+				mwl.Log("Could not find a lesson-fla for the directory "+curDir);
+			}
+			else{
+				if(audioflaName){
+					mwl.Log("processing audio-fla "+audioflaName);
+					var filePath = folder+"/"+audioflaName+".fla";
+					mwl.Log('audio filePath=' + filePath);
+					var au_publishPath = publishPath + 'ex/';	//'file:///C:/Dev/content-compiled-en-us/v2/maths/lessons/ex/';
+					mwl.Log('audio publishPath=' + au_publishPath);
+					mwlp.processFile(filePath, true,true,true,au_publishPath);
+				}
+			}
+		}
+		if(doPb)
+		{		
+			mwl.Log('doing PB folder..');
+			var subDirectories = FLfile.listFolder(folder, "directories"); //folders 
+			mwl.Log('subDirectories.length=' + subDirectories.length);
+			for (subDir in subDirectories) {
+				var curSubDir = subDirectories[subDir];
+				mwl.Log('curSubDir=' + curSubDir);
+				if(curSubDir=="paper-based"){
+					var dir = folder+"/"+curSubDir;
+					var pbFiles = FLfile.listFolder(dir + "/MA_GBR_*.fla", "files");
+					for (pbFile in pbFiles) {
+						var curPbFile = pbFiles[pbFile];
+						mwl.Log('curPbFile=' + curPbFile);
+						var filePath = dir +"/"+curPbFile;
+						mwl.Log('pb filePath=' + filePath);
+						var pb_publishPath = publishPath +curDir+ '/paper-based/';	//var publishPath = 'file:///C:/Dev/content-compiled-en-us/v2/maths/lessons/pb/';
+						mwl.Log('pb publishPath=' + pb_publishPath);
+						mwlp.processFile(filePath, true,true,true,pb_publishPath);
+					}
+				}
+			}
+		}
+		AddProcessedLesson(curDir);
+}
+
+function isEmpty(myObject) {
+    for(var key in myObject) {
+        if (myObject.hasOwnProperty(key)) {
+            return false;
+        }
+    }
+    return true;
+}
+function pushfolders(path,folders)
+{
+	for(var i=0; i<folders.length; i++)
+	{
+		folders_to_process.push(path + '/' + folders[i]);
+	}
+	
+}
+
+// (lesson_folders,relevant_lessons)
+function intersect(arr1,arr2)
+{
+	var results = [];
+	
+	// look thru the lesson folders
+	for (var i = 0; i < arr1.length; i++) {
+		//mwl.Log('arr1=' + arr1[i]);
+		// look for the this folder in the relevant lessons
+		//mwl.Log('arr2=' + arr2.indexOf(arr1[i]));
+		if (arr2.indexOf(arr1[i]) !== -1) {
+			// ok so the folder was found in the relevant lessons...
+			mwl.Log('processedLessons.indexOf(arr1[i])=' + processedLessons.indexOf(arr1[i]));
+			// now check if lesson is already processed
+			if(processedLessons.indexOf(arr1[i])!=-1)
+		  	{
+			  	mwl.Log('Skipping processed Lesson: ' + arr1[i]);
+		  	}
+		  	else
+		  	{
+				results.push(arr1[i]);
+		  	}
+		}
+	}
+	return results;
+}
+
+// (lesson_folders,relevant_lessons)
+function difference(arr1,arr2)
+{
+	var results = [];
+	
+	// look thru the lesson folders
+	for (var i = 0; i < arr1.length; i++) {
+		mwl.Log('arr1=' + arr1[i]);
+		// look for the this folder in the relevant lessons
+		mwl.Log('arr2=' + arr2.indexOf(arr1[i]));
+		if (arr2.indexOf(arr1[i]) == -1) {
+			// ok so the folder was found in the relevant lessons...
+			// now check if lesson is already processed
+			mwl.Log('processedLessons.indexOf(arr1[i])=' + processedLessons.indexOf(arr1[i]));
+			if(processedLessons.indexOf(arr1[i])!=-1)
+		  	{
+			  	mwl.Log('Skipping processed Lesson: ' + arr1[i]);
+		  	}
+		  	else
+		  	{
+				results.push(arr1[i]);
+		  	}
+		}
+	}
+	return results;
+}
+
+function LogNotFoundFolders()
+{
+	
+	GetProcessedLessons();
+	
+	var notFoundFolders = [];
+	
+	arr1 = relevant_lessons;
+	arr2 = processedLessons;
+	
+	// look thru the relevant_lessons folders
+	for (var i = 0; i < arr1.length; i++) {
+		mwl.Log('arr1=' + arr1[i]);
+		// look for the this folder in the processed_folders
+		mwl.Log('arr2=' + arr2.indexOf(arr1[i]));
+		if (arr2.indexOf(arr1[i]) == -1) {
+			// ok so the folder was not found in the processed_folders...
+			fl.trace('not found=' + arr1[i]);
+			notFoundFolders.push(arr1[i]);
+		}
+	}
+	
+	var notFoundLog = "";
+	
+	for(x in notFoundFolders)
+	{
+		notFoundLog += notFoundFolders[x] + "\r\n";
+	}
+	
+	fl.trace('notFoundLog=' + notFoundLog);
+	
+	var fileURI = "file:///c:/temp/NotFoundLessons.txt"; 
+
+	if(FLfile.exists(fileURI))
+	{
+		FLfile.write(fileURI,notFoundLog,"append");
+	}
+	else
+	{
+		FLfile.write(fileURI,notFoundLog);
+	}
+
+}
