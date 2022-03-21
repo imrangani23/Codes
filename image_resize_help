@@ -1,0 +1,18 @@
+import os, sys
+from PIL import Image
+
+path = "C:/Users/IMRAN/Desktop/screenshots/"
+files = os.listdir( path )
+ouput_path= "C:/Users/IMRAN/Desktop/new/"
+
+
+for file in files:
+    im = Image.open(path+file)
+    #print(path, file)
+    rgb_im = im.convert('RGB')
+    filepath_without_extension, extension = os.path.splitext(path+file)
+    #print(filepath_without_extension , extension)    
+    file_name= filepath_without_extension.split('/')[-1]
+    #print(file_name)
+    imResize = rgb_im.resize((307,222), Image.ANTIALIAS)
+    imResize.save(ouput_path+file_name+ '.jpg', 'JPEG', quality=90)
